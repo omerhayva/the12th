@@ -1,10 +1,48 @@
 import type { Decision } from './scoring';
 import type { DecisionWindow, MatchEvent } from './match-engine';
 
+const logoBase = 'https://raw.githubusercontent.com/JoseArroyave/football-logos/main/logos';
+
 export const matches = [
-  { id: 'gs-fb-demo', home: 'Galatasaray', away: 'Fenerbahçe', homeShort: 'GS', awayShort: 'FB', homeScore: 2, awayScore: 1, minute: 64, status: 'LIVE' },
-  { id: 'bjk-ts-demo', home: 'Beşiktaş', away: 'Trabzonspor', homeShort: 'BJK', awayShort: 'TS', homeScore: 0, awayScore: 0, minute: 31, status: 'LIVE' },
-  { id: 'ars-che-demo', home: 'Arsenal', away: 'Chelsea', homeShort: 'ARS', awayShort: 'CHE', homeScore: 1, awayScore: 0, minute: 72, status: 'LIVE' },
+  {
+    id: 'gs-fb-demo',
+    home: 'Galatasaray',
+    away: 'Fenerbahçe',
+    homeShort: 'GS',
+    awayShort: 'FB',
+    homeScore: 2,
+    awayScore: 1,
+    minute: 64,
+    status: 'LIVE',
+    homeLogo: `${logoBase}/turkey/Galatasaray.svg`,
+    awayLogo: `${logoBase}/turkey/Fenerbahçe.svg`,
+  },
+  {
+    id: 'bjk-ts-demo',
+    home: 'Beşiktaş',
+    away: 'Trabzonspor',
+    homeShort: 'BJK',
+    awayShort: 'TS',
+    homeScore: 0,
+    awayScore: 0,
+    minute: 31,
+    status: 'LIVE',
+    homeLogo: `${logoBase}/turkey/Beşiktaş.svg`,
+    awayLogo: `${logoBase}/turkey/Trabzonspor.svg`,
+  },
+  {
+    id: 'ars-che-demo',
+    home: 'Arsenal',
+    away: 'Chelsea',
+    homeShort: 'ARS',
+    awayShort: 'CHE',
+    homeScore: 1,
+    awayScore: 0,
+    minute: 72,
+    status: 'LIVE',
+    homeLogo: `${logoBase}/england/Arsenal.svg`,
+    awayLogo: `${logoBase}/england/Chelsea.svg`,
+  },
 ] as const;
 
 export const leaderboard = [
