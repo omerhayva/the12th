@@ -1,6 +1,6 @@
 import type { ApiPlayer } from '@/lib/api/types';
 import type { Decision } from '@/lib/scoring';
-import type { DecisionInput, PlayerWithDecisions, StoredDecision, The12thStore } from './store';
+import type { DecisionInput, PlayerWithDecisions, StoredDecision, The12thStore, DecisionResolution } from './store';
 
 const globalStore = globalThis as typeof globalThis & {
   __the12thPlayers?: Map<string, ApiPlayer>;
@@ -36,14 +36,24 @@ export const memoryStore: The12thStore = {
       windowId: input.windowId,
       minute: input.minute,
       choice: input.choice,
-      points: 0,
+      points: undefined,
       lockedAt: input.lockedAt,
-    } as StoredDecision;
+    };
     decisions.set(id, decision);
     return decision;
   },
   async getPlayerDecisions(playerId) {
     return [...decisions.values()].filter((d) => d.playerId === playerId);
+  },
+  async getMatchDecisions(matchId) {
+    return [...decisions.values()].filter((d) => d.matchId === matchId);
+  },
+  async resolveDecision(decisionId: string, resolution: DecisionResolution) {
+    const decision = [...decisions.values()].find((d) => d.id === decisionId);
+    if (!decision) throw new Error('DECISION_NOT_FOUND');
+    const next: StoredDecision = { ...decision, ...resolution };
+    decisions.set(decisionId, next);
+    return next;
   },
   async getPlayersWithDecisions() {
     return [...players.values()].map((player): PlayerWithDecisions => ({
