@@ -4,34 +4,34 @@ import { buildLeaderboard } from '@/lib/leaderboard';
 import { getStore, storeMode } from '@/lib/server/store';
 
 export async function GET() {
-  try {
-    const store = await getStore();
-    const players = await store.getPlayersWithDecisions();
-    if (players.length) {
-      return NextResponse.json({ source: storeMode(), entries: buildLeaderboard(players).map((entry) => ({
+  if (storeMode() === 'memory') {
+    return NextResponse.json({
+      source: 'demo',
+      entries: demoLeaderboard.map((entry) => ({
         rank: entry.rank,
-        playerId: entry.id,
+        playerId: `demo-${entry.rank}`,
         name: entry.name,
         iq: entry.iq,
         decisions: entry.decisions,
-        accuracy: entry.accuracy,
-        provisional: entry.provisional,
-      })) });
-    }
-  } catch (error) {
-    console.error('leaderboard read failed', error);
+        accuracy: entry.iq,
+        provisional: entry.decisions < 5,
+      })),
+    });
   }
 
+  const store = await getStore();
+  const players = await store.getPlayersWithDecisions();
+  const entries = buildLeaderboard(players.map(({ player, decisions }) => ({ id: player.id, name: player.name, decisions })));
   return NextResponse.json({
-    source: 'demo',
-    entries: demoLeaderboard.map((entry) => ({
+    source: 'supabase',
+    entries: entries.map((entry) => ({
       rank: entry.rank,
-      playerId: `demo-${entry.rank}`,
+      playerId: entry.id,
       name: entry.name,
       iq: entry.iq,
       decisions: entry.decisions,
-      accuracy: entry.iq,
-      provisional: entry.decisions < 5,
+      accuracy: entry.accuracy,
+      provisional: entry.provisional,
     })),
   });
 }
