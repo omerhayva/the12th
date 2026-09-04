@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server';
 import { demoFootballProvider } from '@/lib/football/demo-provider';
+import { getStore, storeMode } from '@/lib/server/store';
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  const match = await demoFootballProvider.getMatch(id);
+  const store = await getStore();
+  const stored = await store.getMatchState(id);
 
-  if (!match) {
-    return NextResponse.json({ error: 'MATCH_NOT_FOUND' }, { status: 404 });
+  if (stored) {
+    const decisions = await store.getMatchDecisions(id);
+    return NextResponse.json({ source: storeMode(), ...stored, decisions });
   }
 
-  const [events, windows] = await Promise.all([
-    demoFootballProvider.getEvents(id),
-    demoFootballProvider.getDecisionWindows(id),
-  ]);
+  const match = await demoFootballProvider.getMatch(id);
+  if (!match) return NextResponse.json({ error: 'MATCH_NOT_FOUND' }, { status: 404 });
 
-  return NextResponse.json({ source: 'demo', match, events, windows });
+  const [events, windows] = await Promise.all([demoFootballProvider.getEvents(id), demoFootballProvider.getDecisionWindows(id)]);
+  return NextResponse.json({ source: 'demo', match, events, windows, decisions: [] });
 }
