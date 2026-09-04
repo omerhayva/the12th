@@ -1,6 +1,41 @@
+'use client';
+
 import Link from 'next/link';
-import { matches } from '@/lib/demo-data';
+import { useEffect, useState } from 'react';
+
+type Match = {
+  id: string;
+  home: string;
+  away: string;
+  homeShort: string;
+  awayShort: string;
+  homeScore: number;
+  awayScore: number;
+  minute: number;
+  status: 'LIVE' | 'HT' | 'FT';
+};
 
 export default function MatchesPage() {
-  return <main className="page"><div className="shell"><nav className="nav"><Link href="/" className="brand"><div className="mark">12</div><span>THE 12TH</span></Link><div className="navRight"><span>MAÇLAR</span><Link href="/leaderboard">LEADERBOARD</Link><Link href="/profile">MY IQ</Link></div></nav><section className="hero"><div><div className="eyebrow">Live match intelligence</div><h1>MAÇLAR.<br/><span style={{color:'var(--green)'}}>KARAR VER.</span></h1><p className="sub">Canlı maçları seç, oyunun kritik anlarında kararını ver ve gerçek olaylarla ne kadar iyi okuduğunu ölç.</p></div></section><div className="list">{matches.map((match) => <Link className="card matchLink" href={`/match/${match.id}`} key={match.id}><div className="cardHead"><span className="label">{match.status} / {match.minute}&apos;</span><span className="label">LIVE</span></div><div className="matchRow"><div><b>{match.home}</b><span>{match.homeShort}</span></div><strong>{match.homeScore} — {match.awayScore}</strong><div><b>{match.away}</b><span>{match.awayShort}</span></div></div><div className="label">MAÇI AÇ →</div></Link>)}</div></div></main>;
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [source, setSource] = useState('loading');
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const response = await fetch('/api/matches', { cache: 'no-store' });
+        const payload = await response.json() as { source?: string; matches?: Match[] };
+        if (!active) return;
+        setMatches(payload.matches ?? []);
+        setSource(payload.source ?? 'unknown');
+      } catch {
+        if (active) setSource('error');
+      }
+    };
+    void load();
+    const timer = window.setInterval(load, 10000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
+
+  return <main className="page"><div className="shell"><nav className="nav"><Link href="/" className="brand"><div className="mark">12</div><span>THE 12TH</span></Link><div className="navRight"><span>MAÇLAR</span><Link href="/leaderboard">LEADERBOARD</Link><Link href="/profile">MY IQ</Link></div></nav><section className="hero"><div><div className="eyebrow">{source === 'bsd-live' ? 'REAL-TIME FOOTBALL DATA' : 'LIVE MATCH INTELLIGENCE'}</div><h1>MAÇLAR.<br/><span style={{color:'var(--green)'}}>KARAR VER.</span></h1><p className="sub">Gerçek canlı maçları seç, kritik anlarda kararını ver ve oyunla karşılaştır.</p></div></section><div className="list">{matches.length === 0 ? <div className="card"><span className="label">CANLI MAÇ ARANIYOR</span><p className="sub">Şu anda veri sağlayıcısından canlı karşılaşmalar bekleniyor.</p></div> : matches.map((match) => <Link className="card matchLink" href={`/match/${match.id}`} key={match.id}><div className="cardHead"><span className="label">{match.status === 'HT' ? 'DEVRE ARASI' : `CANLI / ${match.minute}'`}</span><span className="label">{source === 'bsd-live' ? 'REAL' : 'DEMO'}</span></div><div className="matchRow"><div><b>{match.home}</b><span>{match.homeShort}</span></div><strong>{match.homeScore} — {match.awayScore}</strong><div><b>{match.away}</b><span>{match.awayShort}</span></div></div><div className="label">MAÇI AÇ →</div></Link>)}</div></div></main>;
 }
