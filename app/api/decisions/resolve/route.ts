@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       label: decision.points === undefined ? 'BEKLEMEDE' : undefined,
       outcome: decision.outcome,
       eventMinute: decision.eventMinute,
-      eventType: decision.eventType,
+      eventType: decision.eventType as MatchEventType | undefined,
     }, event, fallback);
     const updated = await store.resolveDecision(decision.id, {
       outcome: result.outcome,
