@@ -23,11 +23,21 @@ export type DecisionInput = {
   lockedAt: string;
 };
 
+export type DecisionResolution = {
+  outcome: Decision['outcome'];
+  points: number;
+  label: 'DOĞRU' | 'YANLIŞ';
+  eventMinute: number;
+  eventType: Decision['eventType'];
+};
+
 export type The12thStore = {
   getPlayer(playerId: string): Promise<ApiPlayer | null>;
   upsertPlayer(player: ApiPlayer): Promise<ApiPlayer>;
   createDecision(input: DecisionInput): Promise<StoredDecision>;
   getPlayerDecisions(playerId: string): Promise<StoredDecision[]>;
+  getMatchDecisions(matchId: string): Promise<StoredDecision[]>;
+  resolveDecision(decisionId: string, resolution: DecisionResolution): Promise<StoredDecision>;
   getPlayersWithDecisions(): Promise<PlayerWithDecisions[]>;
 };
 
