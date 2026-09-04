@@ -2,6 +2,8 @@ export type DecisionChoice = 'PRESS' | 'DROP' | 'CHANGE';
 
 export type Decision = {
   id: string;
+  windowId?: string;
+  matchId?: string;
   minute: number;
   choice: DecisionChoice;
   outcome: DecisionChoice;
@@ -20,11 +22,14 @@ export function calculateIQ(decisions: Decision[]) {
 
 export function calculateBreakdown(decisions: Decision[]) {
   if (!decisions.length) return { prediction: 0, reading: 0, tactical: 0, timing: 0, consistency: 0 };
+
   const correct = decisions.filter((d) => d.choice === d.outcome).length;
   const prediction = Math.round((correct / decisions.length) * 100);
   const reading = Math.round(decisions.reduce((s, d) => s + d.points, 0) / decisions.length);
-  const tactical = Math.round(reading * 0.92 + prediction * 0.08);
-  const timing = Math.round(85 + (correct / decisions.length) * 15);
-  const consistency = Math.round(100 - Math.min(40, Math.abs(50 - reading) * 0.4));
+  const tactical = Math.round(reading * 0.9 + prediction * 0.1);
+  const timing = Math.round(decisions.reduce((sum, d) => sum + Math.max(0, 100 - Math.min(60, d.minute)), 0) / decisions.length);
+  const variance = decisions.reduce((sum, d) => sum + Math.abs(d.points - reading), 0) / decisions.length;
+  const consistency = Math.round(Math.max(0, 100 - variance * 0.65));
+
   return { prediction, reading, tactical, timing, consistency };
 }
