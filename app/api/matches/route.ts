@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server';
 import { demoFootballProvider } from '@/lib/football/demo-provider';
+import { getStore, storeMode } from '@/lib/server/store';
 
 export async function GET() {
-  const matches = await demoFootballProvider.getLiveMatches();
-  return NextResponse.json({ source: 'demo', matches });
+  const store = await getStore();
+  const demoMatches = await demoFootballProvider.getLiveMatches();
+
+  const matches = await Promise.all(
+    demoMatches.map(async (demoMatch) => {
+      const stored = await store.getMatchState(demoMatch.id);
+      return stored?.match ?? demoMatch;
+    }),
+  );
+
+  return NextResponse.json({ source: storeMode(), matches });
 }
