@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import { matches } from '@/lib/demo-data';
 import { decisionLabels } from '@/lib/match-engine';
 import type { DecisionChoice } from '@/lib/scoring';
@@ -14,8 +14,11 @@ const choices: DecisionChoice[] = ['PRESS', 'DROP', 'CHANGE'];
 
 type DecisionResponse = { id: string; lockedAt?: string; points?: number; outcome?: DecisionChoice };
 
-export default function MatchPage({ params }: { params: { id: string } }) {
-  const match = useMemo(() => matches.find((m) => m.id === params.id) ?? matches[0], [params.id]);
+type MatchPageProps = { params: Promise<{ id: string }> };
+
+export default function MatchPage({ params }: MatchPageProps) {
+  const { id } = use(params);
+  const match = useMemo(() => matches.find((m) => m.id === id) ?? matches[0], [id]);
   const [state, setState] = useState<LiveMatchState>(() => getInitialLiveState(match.id));
   const [selected, setSelected] = useState<DecisionChoice | null>(null);
   const [locked, setLocked] = useState(false);
