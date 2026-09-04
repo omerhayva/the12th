@@ -1,0 +1,6 @@
+import Link from 'next/link';
+import { matches } from '@/lib/demo-data';
+
+export default function MatchesPage() {
+  return <main className="page"><div className="shell"><nav className="nav"><Link href="/" className="brand"><div className="mark">12</div><span>THE 12TH</span></Link><div className="navRight"><span>MAÇLAR</span><Link href="/leaderboard">LEADERBOARD</Link><Link href="/profile">MY IQ</Link></div></nav><section className="hero"><div><div className="eyebrow">Live match intelligence</div><h1>MAÇLAR.<br/><span style={{color:'var(--green)'}}>KARAR VER.</span></h1><p className="sub">Canlı maçları seç, oyunun kritik anlarında kararını ver ve gerçek olaylarla ne kadar iyi okuduğunu ölç.</p></div></section><div className="list">{matches.map((match) => <Link className="card matchLink" href={`/match/${match.id}`} key={match.id}><div className="cardHead"><span className="label">{match.status} / {match.minute}&apos;</span><span className="label">LIVE</span></div><div className="matchRow"><div><b>{match.home}</b><span>{match.homeShort}</span></div><strong>{match.homeScore} — {match.awayScore}</strong><div><b>{match.away}</b><span>{match.awayShort}</span></div></div><div className="label">MAÇI AÇ →</div></Link>)}</div></div></main>;
+}
