@@ -10,6 +10,8 @@ import { getPlayer } from '@/lib/player';
 
 const choices: DecisionChoice[] = ['PRESS', 'DROP', 'CHANGE'];
 
+type DecisionResponse = { id: string; lockedAt?: string; points?: number; outcome?: DecisionChoice };
+
 export default function MatchPage({ params }: { params: { id: string } }) {
   const match = useMemo(() => matches.find((m) => m.id === params.id) ?? matches[0], [params.id]);
   const [state, setState] = useState<LiveMatchState>(() => getInitialLiveState(match.id));
@@ -65,12 +67,16 @@ export default function MatchPage({ params }: { params: { id: string } }) {
 
       const response = await fetch('/api/decisions', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: player.id, matchId: match.id, windowId: activeWindow.id, choice: selected }),
+        body: JSON.stringify({ playerId: player.id, playerName: player.name, matchId: match.id, windowId: activeWindow.id, choice: selected }),
       });
-      const payload = await response.json().catch(() => null) as { error?: string; decision?: { lockedAt?: string } } | null;
-      if (!response.ok) throw new Error(payload?.error ?? 'DECISION_FAILED');
+      const payload = await response.json().catch(() => null) as { error?: string; decision?: DecisionResponse } | null;
+      if (!response.ok || !payload?.decision?.id) throw new Error(payload?.error ?? 'DECISION_FAILED');
 
-      const localDecision = { ...nextDecision, lockedAt: payload?.decision?.lockedAt ? Date.parse(payload.decision.lockedAt) : nextDecision.lockedAt };
+      const localDecision = {
+        id: payload.decision.id,
+        ...nextDecision,
+        lockedAt: payload.decision.lockedAt ? Date.parse(payload.decision.lockedAt) : nextDecision.lockedAt,
+      };
       const nextState: LiveMatchState = { ...state, decisions: [...state.decisions.filter((item) => item.windowId !== activeWindow.id), localDecision] };
       setState(nextState); setLocked(true); writeLiveState(match.id, nextState);
     } catch (error) {
