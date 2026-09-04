@@ -12,7 +12,7 @@ const eventButtons: { type: MatchEventType; title: string }[] = [
 ];
 
 export default function AdminPage() {
-  const [matchId, setMatchId] = useState(matches[0].id);
+  const [matchId, setMatchId] = useState<string>(matches[0].id);
   const [team, setTeam] = useState<'HOME' | 'AWAY'>('HOME');
   const [minuteInput, setMinuteInput] = useState(String(matches[0].minute));
   const [state, setState] = useState<LiveMatchState>(() => getInitialLiveState(matches[0].id));
