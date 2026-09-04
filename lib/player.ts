@@ -11,6 +11,10 @@ function makeId() {
   return `player-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function makeName(id: string) {
+  return `12TH #${id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
+}
+
 export function getPlayer(): PlayerProfile {
   if (typeof window === 'undefined') {
     return { id: 'demo-player', name: 'Sen', createdAt: new Date(0).toISOString() };
@@ -18,12 +22,16 @@ export function getPlayer(): PlayerProfile {
 
   try {
     const raw = window.localStorage.getItem(PLAYER_KEY);
-    if (raw) return JSON.parse(raw) as PlayerProfile;
+    if (raw) {
+      const parsed = JSON.parse(raw) as PlayerProfile;
+      if (parsed.id && parsed.name) return parsed;
+    }
   } catch {}
 
+  const id = makeId();
   const profile: PlayerProfile = {
-    id: makeId(),
-    name: `12TH #${Math.floor(1000 + Math.random() * 9000)}`,
+    id,
+    name: makeName(id),
     createdAt: new Date().toISOString(),
   };
 
