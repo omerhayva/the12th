@@ -4,10 +4,13 @@ import { demoEvents, demoWindows } from './demo-data';
 
 export type LiveDecision = {
   windowId: string;
+  matchId?: string;
+  minute: number;
   choice: DecisionChoice;
   lockedAt: number;
   points?: number;
-  label?: string;
+  label?: 'DOĞRU' | 'YANLIŞ' | 'BEKLEMEDE';
+  outcome?: DecisionChoice;
 };
 
 export type LiveMatchState = {
@@ -18,28 +21,20 @@ export type LiveMatchState = {
 
 export const LIVE_STATE_PREFIX = 'the12th:live:';
 
-export function getLiveStateKey(matchId: string) {
-  return `${LIVE_STATE_PREFIX}${matchId}`;
-}
+export function getLiveStateKey(matchId: string) { return `${LIVE_STATE_PREFIX}${matchId}`; }
 
 export function getInitialLiveState(matchId: string): LiveMatchState {
-  return {
-    events: demoEvents[matchId] ?? [],
-    windows: demoWindows[matchId] ?? [],
-    decisions: [],
-  };
+  return { events: demoEvents[matchId] ?? [], windows: demoWindows[matchId] ?? [], decisions: [] };
 }
 
 export function readLiveState(matchId: string): LiveMatchState {
   if (typeof window === 'undefined') return getInitialLiveState(matchId);
-
   try {
     const raw = window.localStorage.getItem(getLiveStateKey(matchId));
     if (!raw) return getInitialLiveState(matchId);
-    return JSON.parse(raw) as LiveMatchState;
-  } catch {
-    return getInitialLiveState(matchId);
-  }
+    const parsed = JSON.parse(raw) as Partial<LiveMatchState>;
+    return { events: parsed.events ?? [], windows: parsed.windows ?? [], decisions: parsed.decisions ?? [] };
+  } catch { return getInitialLiveState(matchId); }
 }
 
 export function writeLiveState(matchId: string, state: LiveMatchState) {
