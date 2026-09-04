@@ -19,17 +19,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'INVALID_DECISION' }, { status: 400 });
   }
 
-  const [match, windows] = await Promise.all([
-    demoFootballProvider.getMatch(body.matchId),
-    demoFootballProvider.getDecisionWindows(body.matchId),
-  ]);
+  const store = await getStore();
+  const storedState = await store.getMatchState(body.matchId);
+  const match = storedState?.match ?? await demoFootballProvider.getMatch(body.matchId);
+  const windows = storedState?.windows ?? await demoFootballProvider.getDecisionWindows(body.matchId);
+
   if (!match) return NextResponse.json({ error: 'MATCH_NOT_FOUND' }, { status: 404 });
 
   const window = windows.find((item) => item.id === body.windowId);
   if (!window) return NextResponse.json({ error: 'WINDOW_NOT_FOUND' }, { status: 404 });
   if (window.resolved) return NextResponse.json({ error: 'WINDOW_ALREADY_RESOLVED' }, { status: 409 });
 
-  const store = await getStore();
   const existing = await store.getPlayer(body.playerId);
   await store.upsertPlayer(existing ?? {
     id: body.playerId,
