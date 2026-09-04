@@ -3,31 +3,29 @@ import type { FootballMatch, FootballProvider } from './provider';
 
 const BASE_URL = 'https://sports.bzzoiro.com/api/v2';
 type Json = Record<string, unknown>;
-function text(value: unknown, fallback = '') { return typeof value === 'string' ? value : fallback; }
-function num(value: unknown, fallback = 0) { return typeof value === 'number' && Number.isFinite(value) ? value : fallback; }
-function team(value: unknown): Json { return value && typeof value === 'object' ? value as Json : {}; }
-function mapStatus(value: unknown): FootballMatch['status'] { const s = text(value).toLowerCase(); if (s === 'finished' || s === 'ft') return 'FT'; if (s === 'half_time' || s === 'ht') return 'HT'; return 'LIVE'; }
-function mapMinute(value: unknown) { if (typeof value === 'number') return Math.max(0, Math.floor(value)); const m = text(value).match(/\d+/); return m ? Number(m[0]) : 0; }
+const text = (v: unknown, f = '') => typeof v === 'string' ? v : f;
+const num = (v: unknown, f = 0) => typeof v === 'number' && Number.isFinite(v) ? v : f;
+const team = (v: unknown): Json => v && typeof v === 'object' ? v as Json : {};
+function mapStatus(v: unknown): FootballMatch['status'] { const s = text(v).toLowerCase(); if (s === 'finished' || s === 'ft') return 'FT'; if (s === 'half_time' || s === 'ht') return 'HT'; return 'LIVE'; }
+function mapMinute(v: unknown) { if (typeof v === 'number') return Math.max(0, Math.floor(v)); const m = text(v).match(/\d+/); return m ? Number(m[0]) : 0; }
 function mapMatch(raw: Json): FootballMatch { const home = team(raw.home_team ?? raw.home); const away = team(raw.away_team ?? raw.away); return { id: String(raw.id ?? raw.event_id), home: text(home.name, text(raw.home_name, 'Home')), away: text(away.name, text(raw.away_name, 'Away')), homeShort: text(home.short_name, text(home.abbreviation, text(raw.home_short, 'HOME'))), awayShort: text(away.short_name, text(away.abbreviation, text(raw.away_short, 'AWAY'))), homeScore: num(raw.home_score ?? raw.home_goals), awayScore: num(raw.away_score ?? raw.away_goals), minute: mapMinute(raw.current_minute ?? raw.minute ?? raw.period), status: mapStatus(raw.status ?? raw.state), homeLogo: text(home.logo_url ?? home.logo), awayLogo: text(away.logo_url ?? away.logo) }; }
 function incidentType(raw: Json): MatchEventType { const v = text(raw.type ?? raw.incident_type ?? raw.kind).toLowerCase(); if (v.includes('goal')) return 'GOAL'; if (v.includes('sub')) return 'SUBSTITUTION'; if (v.includes('red') || v.includes('yellow') || v.includes('card')) return 'CARD'; if (v.includes('shot') || v.includes('save') || v.includes('miss')) return 'SHOT'; if (v.includes('chance')) return 'CHANCE'; return 'POSSESSION'; }
 function mapIncident(raw: Json, index: number): MatchEvent { const minute = num(raw.minute ?? raw.period_minute ?? raw.min); const side = text(raw.team_side ?? raw.side).toUpperCase(); const team = side === 'HOME' ? 'HOME' : side === 'AWAY' ? 'AWAY' : undefined; const type = incidentType(raw); const player = raw.player && typeof raw.player === 'object' ? text((raw.player as Json).name) : text(raw.player_name); return { id: String(raw.id ?? raw.incident_id ?? `bsd-${index}-${minute}`), minute, type, team, title: text(raw.title ?? raw.detail ?? raw.description, player ? `${player} — ${type}` : type), description: text(raw.description ?? raw.detail) }; }
 async function bsdFetch(path: string) { const token = process.env.BSD_FOOTBALL_API_KEY; if (!token) throw new Error('BSD_FOOTBALL_API_KEY_MISSING'); const response = await fetch(`${BASE_URL}${path}`, { headers: { Authorization: `Token ${token}` }, next: { revalidate: 10 } }); if (!response.ok) throw new Error(`BSD_HTTP_${response.status}`); return response.json() as Promise<Json>; }
 function results(payload: Json) { return Array.isArray(payload.results) ? payload.results.filter((item): item is Json => Boolean(item && typeof item === 'object')) : []; }
-
 const predictionWindows = (match: FootballMatch): DecisionWindow[] => {
-  const scoreChoices = ['SCORE_0_0','SCORE_1_0','SCORE_0_1','SCORE_1_1','SCORE_2_0','SCORE_0_2','SCORE_2_1','SCORE_1_2','SCORE_2_2','SCORE_3_0','SCORE_0_3','OTHER_SCORE'] as const;
+  const scores = ['SCORE_0_0','SCORE_1_0','SCORE_0_1','SCORE_1_1','SCORE_2_0','SCORE_0_2','SCORE_2_1','SCORE_1_2','SCORE_2_2','SCORE_3_0','SCORE_0_3','OTHER_SCORE'] as const;
   return [
     { id: `bsd-${match.id}-result`, minute: match.minute, question: 'Maç nasıl biter?', choices: ['RESULT_HOME','RESULT_DRAW','RESULT_AWAY'], correctChoice: null, resolved: false },
-    { id: `bsd-${match.id}-score`, minute: match.minute, question: 'Maç kaç kaç biter?', choices: [...scoreChoices], correctChoice: null, resolved: false },
+    { id: `bsd-${match.id}-score`, minute: match.minute, question: 'Maç kaç kaç biter?', choices: [...scores], correctChoice: null, resolved: false },
     { id: `bsd-${match.id}-first-goal`, minute: match.minute, question: 'İlk golü kim atar?', choices: ['FIRST_GOAL_HOME','FIRST_GOAL_AWAY','NO_GOAL'], correctChoice: null, resolved: false },
-    { id: `bsd-${match.id}-card`, minute: match.minute, question: 'Sıradaki sarı/kırmızı kart hangi taraftan gelir?', choices: ['NEXT_CARD_HOME','NEXT_CARD_AWAY','NO_CARD'], correctChoice: null, resolved: false },
-    { id: `bsd-${match.id}-goals', minute: match.minute, question: 'Toplam gol 2.5 üstü mü altı mı?', choices: ['OVER_2_5','UNDER_2_5'], correctChoice: null, resolved: false },
+    { id: `bsd-${match.id}-card`, minute: match.minute, question: 'Sıradaki kart hangi taraftan gelir?', choices: ['NEXT_CARD_HOME','NEXT_CARD_AWAY','NO_CARD'], correctChoice: null, resolved: false },
+    { id: `bsd-${match.id}-goals`, minute: match.minute, question: 'Toplam gol 2.5 üstü mü altı mı?', choices: ['OVER_2_5','UNDER_2_5'], correctChoice: null, resolved: false },
     { id: `bsd-${match.id}-btts`, minute: match.minute, question: 'İki takım da gol atar mı?', choices: ['BTTS_YES','BTTS_NO'], correctChoice: null, resolved: false },
     { id: `bsd-${match.id}-next-event`, minute: match.minute, question: 'Sıradaki önemli olay ne olur?', choices: ['NEXT_EVENT_GOAL','NEXT_EVENT_SHOT','NEXT_EVENT_CARD','NEXT_EVENT_SUBSTITUTION','NEXT_EVENT_NONE'], correctChoice: null, resolved: false },
     { id: `bsd-${match.id}-tactical`, minute: match.minute, question: 'Şimdi oyunu nasıl okumalıyız?', choices: ['PRESS','DROP','CHANGE'], correctChoice: null, resolved: false },
   ];
 };
-
 export const bsdFootballProvider: FootballProvider = {
   async getLiveMatches() { const payload = await bsdFetch('/events/live/'); return results(payload).map(mapMatch).filter((m) => m.id && m.status !== 'FT'); },
   async getMatch(matchId) { const payload = await bsdFetch(`/events/${encodeURIComponent(matchId)}/`); const raw = payload.event && typeof payload.event === 'object' ? payload.event as Json : payload; return raw.id || raw.event_id ? mapMatch(raw) : null; },
