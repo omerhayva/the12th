@@ -21,12 +21,14 @@ export default function AdminPage() {
   const [team, setTeam] = useState<'HOME' | 'AWAY'>('HOME');
   const [minuteInput, setMinuteInput] = useState(String(matches[0].minute));
   const [state, setState] = useState<LiveMatchState>(() => getInitialLiveState(matches[0].id));
+  const [apiStatus, setApiStatus] = useState<string>('LOCAL LIVE STATE');
   const match = matches.find((item) => item.id === matchId) ?? matches[0];
 
   useEffect(() => {
     const next = readLiveState(matchId);
     setState(next);
     setMinuteInput(String(next.meta.minute));
+    setApiStatus('LOCAL LIVE STATE');
   }, [matchId]);
 
   useEffect(() => {
@@ -40,7 +42,28 @@ export default function AdminPage() {
   const currentEvents = state.events;
   const pending = useMemo(() => windows.filter((w) => !w.resolved), [windows]);
 
-  function addEvent(type: MatchEventType, title: string) {
+  async function persistResolution(decisionId: string | undefined, event: MatchEvent) {
+    if (!decisionId) return false;
+    try {
+      const response = await fetch('/api/decisions/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decisionId, matchId, eventType: event.type, eventMinute: event.minute }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
+        setApiStatus(`API HATASI · ${payload?.error ?? response.status}`);
+        return false;
+      }
+      setApiStatus('KARAR VERİTABANINDA ÇÖZÜLDÜ');
+      return true;
+    } catch {
+      setApiStatus('API ULAŞILAMIYOR · LOCAL DEVAM');
+      return false;
+    }
+  }
+
+  async function addEvent(type: MatchEventType, title: string) {
     const minute = Math.max(0, Math.min(120, Number(minuteInput) || state.meta.minute));
     const event: MatchEvent = {
       id: `live-${Date.now()}`,
@@ -63,12 +86,15 @@ export default function AdminPage() {
     }
     if (type === 'END') status = 'FT';
 
+    let resolution: ReturnType<typeof resolveDecision> | null = null;
+    let linkedId: string | undefined;
     if (target && suggestedChoice) {
       const linked = state.decisions.find((decision) => decision.windowId === target.id);
       if (linked) {
-        const result = resolveDecision(linked, event, target.correctChoice);
+        linkedId = linked.id;
+        resolution = resolveDecision(linked, event, target.correctChoice);
         nextDecisions = state.decisions.map((decision) => decision.windowId === target.id
-          ? { ...decision, points: result.points, outcome: result.outcome, label: result.label, eventMinute: event.minute, eventType: event.type } : decision);
+          ? { ...decision, points: resolution!.points, outcome: resolution!.outcome, label: resolution!.label, eventMinute: event.minute, eventType: event.type } : decision);
         nextWindows = windows.map((item) => item.id === target.id ? { ...item, resolved: true, resolvedByEventId: event.id } : item);
       }
     }
@@ -82,9 +108,11 @@ export default function AdminPage() {
     setState(nextState);
     setMinuteInput(String(minute));
     writeLiveState(matchId, nextState);
+
+    if (resolution && linkedId) await persistResolution(linkedId, event);
   }
 
-  function resolveWindow(windowId: string) {
+  async function resolveWindow(windowId: string) {
     const target = windows.find((item) => item.id === windowId);
     const linked = state.decisions.find((decision) => decision.windowId === windowId);
     if (!target || !linked) return;
@@ -97,6 +125,7 @@ export default function AdminPage() {
     const nextState = { ...state, windows: nextWindows, decisions: nextDecisions };
     setState(nextState);
     writeLiveState(matchId, nextState);
+    await persistResolution(linked.id, event);
   }
 
   function handleReset() {
@@ -104,6 +133,7 @@ export default function AdminPage() {
     resetLiveState(matchId);
     setState(initial);
     setMinuteInput(String(initial.meta.minute));
+    setApiStatus('LOCAL DEMO SIFIRLANDI');
   }
 
   return <main className="page-shell">
@@ -138,6 +168,6 @@ export default function AdminPage() {
         {!windows.length && <div className="empty-state">Bu maç için henüz karar penceresi yok.</div>}
       </div>
     </section>
-    <div className="admin-note">DEMO LIVE STATE • Aynı tarayıcıda /admin ile /match arasında çalışır. Üretimde veritabanı + realtime kullanılacak.</div>
+    <div className="admin-note">{apiStatus} • Admin çözümleme API&apos;ye bağlandı; production&apos;da THE12TH_ADMIN_KEY ile korunur.</div>
   </main>;
 }
