@@ -1,10 +1,12 @@
 import type { Decision } from '@/lib/scoring';
 import type { ApiPlayer } from '@/lib/api/types';
 
-export type StoredDecision = Decision & {
+export type StoredDecision = Omit<Decision, 'outcome' | 'points'> & {
   playerId: string;
   matchId: string;
   lockedAt: string;
+  outcome?: Decision['outcome'];
+  points?: number;
 };
 
 export type PlayerWithDecisions = {
