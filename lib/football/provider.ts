@@ -1,7 +1,20 @@
 import type { DecisionWindow, MatchEvent } from '@/lib/match-engine';
-import type { matches } from '@/lib/demo-data';
 
-export type FootballMatch = (typeof matches)[number];
+export type FootballMatchStatus = 'LIVE' | 'HT' | 'FT';
+
+export type FootballMatch = {
+  id: string;
+  home: string;
+  away: string;
+  homeShort: string;
+  awayShort: string;
+  homeScore: number;
+  awayScore: number;
+  minute: number;
+  status: FootballMatchStatus;
+  homeLogo?: string;
+  awayLogo?: string;
+};
 
 export type FootballProvider = {
   getLiveMatches: () => Promise<FootballMatch[]>;
