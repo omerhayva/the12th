@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { choiceForEvent, resolveDecision as scoreDecision, getInitialLiveState } from '@/lib/live-state';
+import { choiceForEvent, resolveDecision as scoreLiveDecision } from '@/lib/live-state';
 import { getStore } from '@/lib/server/store';
 import type { MatchEventType } from '@/lib/match-engine';
 
@@ -8,7 +8,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'ADMIN_AUTH_NOT_CONFIGURED' }, { status: 503 });
   }
 
-  if (process.env.THE12TH_ADMIN_KEY && request.headers.get('x-the12th-admin-key') !== process.env.THE12TH_ADMIN_KEY) {
+  const configuredKey = process.env.THE12TH_ADMIN_KEY;
+  const suppliedKey = request.headers.get('x-the12th-admin-key') ?? request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  if (configuredKey && suppliedKey !== configuredKey) {
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
   }
 
@@ -26,24 +28,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'INVALID_EVENT_MINUTE' }, { status: 400 });
   }
 
-  const state = getInitialLiveState(body.matchId);
-  const event = state.events.find((item) => item.type === body.eventType && item.minute === body.eventMinute) ?? {
-    id: `api-${body.eventMinute}-${body.eventType}-${Date.now()}`,
-    minute: body.eventMinute,
-    type: body.eventType,
-    title: body.eventType,
-  };
-  const fallback = choiceForEvent(body.eventType);
+  const store = await getStore();
+  const state = await store.getMatchState(body.matchId);
+  const event = state?.events.find((item) => item.type === body.eventType && item.minute === body.eventMinute);
+  if (!event) return NextResponse.json({ error: 'EVENT_NOT_FOUND' }, { status: 404 });
+
+  const fallback = choiceForEvent(event.type);
   if (!fallback) return NextResponse.json({ error: 'EVENT_CANNOT_RESOLVE_DECISION' }, { status: 422 });
 
-  const store = await getStore();
   const decisions = await store.getMatchDecisions(body.matchId);
   const decision = decisions.find((item) => item.id === body.decisionId);
   if (!decision) return NextResponse.json({ error: 'DECISION_NOT_FOUND' }, { status: 404 });
   if (typeof decision.points === 'number') return NextResponse.json({ error: 'DECISION_ALREADY_RESOLVED' }, { status: 409 });
 
   try {
-    const result = scoreDecision(decision, event, fallback);
+    const result = scoreLiveDecision({ ...decision, lockedAt: Date.parse(decision.lockedAt) }, event, fallback);
     const updated = await store.resolveDecision(decision.id, {
       outcome: result.outcome,
       points: result.points,
@@ -51,6 +50,19 @@ export async function POST(request: Request) {
       eventMinute: event.minute,
       eventType: event.type,
     });
+
+    if (state) {
+      const window = state.windows.find((item) => item.id === decision.windowId);
+      if (window && !window.resolved) {
+        await store.upsertDecisionWindow(body.matchId, {
+          ...window,
+          resolved: true,
+          resolvedByEventId: event.id,
+          correctChoice: result.outcome,
+        });
+      }
+    }
+
     return NextResponse.json({ ok: true, decision: updated });
   } catch (error) {
     console.error('decision resolution failed', error);
