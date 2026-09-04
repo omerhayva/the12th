@@ -1,8 +1,11 @@
+import type { Decision } from './scoring';
+import type { DecisionWindow, MatchEvent } from './match-engine';
+
 export const matches = [
   { id: 'gs-fb-demo', home: 'Galatasaray', away: 'Fenerbahçe', homeShort: 'GS', awayShort: 'FB', homeScore: 2, awayScore: 1, minute: 64, status: 'LIVE' },
   { id: 'bjk-ts-demo', home: 'Beşiktaş', away: 'Trabzonspor', homeShort: 'BJK', awayShort: 'TS', homeScore: 0, awayScore: 0, minute: 31, status: 'LIVE' },
   { id: 'ars-che-demo', home: 'Arsenal', away: 'Chelsea', homeShort: 'ARS', awayShort: 'CHE', homeScore: 1, awayScore: 0, minute: 72, status: 'LIVE' },
-];
+] as const;
 
 export const leaderboard = [
   { rank: 1, name: 'FootballMind', iq: 96, decisions: 48 },
@@ -13,8 +16,22 @@ export const leaderboard = [
   { rank: 142, name: 'Sen', iq: 88, decisions: 27 },
 ];
 
-export const demoDecisions = [
+export const demoDecisions: Decision[] = [
   { id: 'd1', minute: 51, choice: 'PRESS', outcome: 'PRESS', points: 100 },
   { id: 'd2', minute: 57, choice: 'PRESS', outcome: 'PRESS', points: 100 },
   { id: 'd3', minute: 64, choice: 'PRESS', outcome: 'PRESS', points: 100 },
 ];
+
+export const demoEvents: Record<string, MatchEvent[]> = {
+  'gs-fb-demo': [
+    { id: 'e1', minute: 57, type: 'SHOT', team: 'HOME', title: 'Galatasaray şut çekti', description: 'Baskı sonrası pozisyon.' },
+    { id: 'e2', minute: 61, type: 'CHANCE', team: 'HOME', title: 'Büyük şans', description: 'Galatasaray tehlikeli bölgede.' },
+  ],
+};
+
+export const demoWindows: Record<string, DecisionWindow[]> = {
+  'gs-fb-demo': [
+    { id: 'w51', minute: 51, question: 'Takım önde. Ne yapmalı?', choices: ['PRESS', 'DROP', 'CHANGE'], correctChoice: 'PRESS', resolved: true, resolvedByEventId: 'e1' },
+    { id: 'w64', minute: 64, question: 'Şimdi hamle zamanı mı?', choices: ['PRESS', 'DROP', 'CHANGE'], correctChoice: 'PRESS', resolved: false },
+  ],
+};
