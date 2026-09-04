@@ -93,5 +93,44 @@ create policy "public read windows" on public.decision_windows for select using 
 create policy "public read events" on public.match_events for select using (true);
 create policy "public read leaderboard" on public.players for select using (true);
 
--- Decisions are intentionally not publicly writable through this schema.
--- Production writes should go through the authenticated API/server layer.
+-- Decisions stay server-written. Raw decision rows are not exposed to the public client.
+-- Match-level fan pulse should be exposed later as an aggregate/broadcast channel.
+
+-- Enable Supabase Realtime for public live-match data.
+alter table public.matches replica identity full;
+alter table public.match_events replica identity full;
+alter table public.decision_windows replica identity full;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'matches'
+  ) then
+    alter publication supabase_realtime add table public.matches;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'match_events'
+  ) then
+    alter publication supabase_realtime add table public.match_events;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'decision_windows'
+  ) then
+    alter publication supabase_realtime add table public.decision_windows;
+  end if;
+end
+$$;
