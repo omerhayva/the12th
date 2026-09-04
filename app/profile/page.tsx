@@ -1,10 +1,36 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import { demoDecisions } from '@/lib/demo-data';
-import { calculateBreakdown, calculateIQ } from '@/lib/scoring';
+import { calculateBreakdown, calculateIQ, type Decision } from '@/lib/scoring';
+import { matches } from '@/lib/demo-data';
+import { readLiveState } from '@/lib/live-state';
 
 export default function ProfilePage() {
-  const iq = calculateIQ(demoDecisions);
-  const breakdown = calculateBreakdown(demoDecisions);
+  const [decisions, setDecisions] = useState<Decision[]>(demoDecisions);
+
+  useEffect(() => {
+    const load = () => {
+      const live = matches.flatMap((match) => readLiveState(match.id).decisions);
+      const liveDecisions: Decision[] = live.filter((d) => typeof d.points === 'number').map((d) => ({
+        id: `${d.windowId}-${d.lockedAt}`,
+        windowId: d.windowId,
+        minute: Math.round((d.lockedAt % 3600000) / 60000),
+        choice: d.choice,
+        outcome: d.choice,
+        points: d.points ?? 0,
+      }));
+      setDecisions(liveDecisions.length ? liveDecisions : demoDecisions);
+    };
+    load();
+    const timer = window.setInterval(load, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const iq = calculateIQ(decisions);
+  const breakdown = calculateBreakdown(decisions);
   const rows = [['Tahmin doğruluğu', breakdown.prediction], ['Maç okuma', breakdown.reading], ['Taktik okuma', breakdown.tactical], ['Zamanlama', breakdown.timing], ['Karar tutarlılığı', breakdown.consistency]];
-  return <main className="page"><div className="shell"><nav className="nav"><Link href="/" className="brand"><div className="mark">12</div><span>THE 12TH</span></Link><div className="navRight"><Link href="/matches">MAÇLAR</Link><Link href="/leaderboard">LEADERBOARD</Link><span>MY IQ</span></div></nav><section className="hero"><div><div className="eyebrow">Your football intelligence</div><h1>MY<br/><span style={{color:'var(--green)'}}>FOOTBALL IQ.</span></h1><p className="sub">Karar geçmişin, doğruluk oranların ve maç okuma profilin tek yerde.</p></div></section><div className="grid"><div className="card iq"><span className="label">FOOTBALL IQ</span><div className="iqNum">{iq}<span>/100</span></div><div className="progress"><i style={{width:`${iq}%`}}/></div><div className="rows">{rows.map(([name, value]) => <div className="row" key={name}><span>{name}</span><b>{value}</b></div>)}</div></div><div className="card"><span className="label">RECENT DECISIONS</span>{demoDecisions.map((d) => <div className="event" key={d.id}><span className="time">{d.minute}&apos;</span><div><b>{d.choice}</b><p>{d.points === 100 ? 'Doğru okuma · +100' : 'Yanlış okuma · +35'}</p></div></div>)}</div></div></div></main>;
+
+  return <main className="page"><div className="shell"><nav className="nav"><Link href="/" className="brand"><div className="mark">12</div><span>THE 12TH</span></Link><div className="navRight"><Link href="/matches">MAÇLAR</Link><Link href="/leaderboard">LEADERBOARD</Link><span>MY IQ</span></div></nav><section className="hero"><div><div className="eyebrow">Your football intelligence</div><h1>MY<br/><span style={{color:'var(--green)'}}>FOOTBALL IQ.</span></h1><p className="sub">Karar geçmişin, doğruluk oranların ve maç okuma profilin tek yerde.</p></div></section><div className="grid"><div className="card iq"><span className="label">FOOTBALL IQ</span><div className="iqNum">{iq}<span>/100</span></div><div className="progress"><i style={{width:`${iq}%`}}/></div><div className="rows">{rows.map(([name, value]) => <div className="row" key={name}><span>{name}</span><b>{value}</b></div>)}</div><Link href={`/share/${iq}`} className="submit" style={{display:'block',textAlign:'center',marginTop:20}}>IQ&apos;NU PAYLAŞ →</Link></div><div className="card"><span className="label">RECENT DECISIONS</span>{decisions.slice().reverse().map((d) => <div className="event" key={d.id}><span className="time">{d.minute}&apos;</span><div><b>{d.choice}</b><p>{d.points === 100 ? 'Doğru okuma · +100' : 'Yanlış okuma · +35'}</p></div></div>)}</div></div></div></main>;
 }
