@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { demoWindows, matches } from '@/lib/demo-data';
-import { decisionLabels, evaluateDecision, MatchEvent, MatchEventType } from '@/lib/match-engine';
+import { decisionLabels, MatchEvent, MatchEventType } from '@/lib/match-engine';
 import type { DecisionChoice } from '@/lib/scoring';
-import { choiceForEvent, getInitialLiveState, readLiveState, resetLiveState, writeLiveState, type LiveMatchState } from '@/lib/live-state';
+import { choiceForEvent, getInitialLiveState, readLiveState, resetLiveState, resolveDecision, writeLiveState, type LiveMatchState } from '@/lib/live-state';
 
 const eventButtons: { type: MatchEventType; title: string }[] = [
   { type: 'GOAL', title: 'GOL' },
@@ -66,9 +66,9 @@ export default function AdminPage() {
     if (target && suggestedChoice) {
       const linked = state.decisions.find((decision) => decision.windowId === target.id);
       if (linked) {
-        const points = linked.choice === suggestedChoice ? 100 : 35;
+        const result = resolveDecision(linked, event, target.correctChoice);
         nextDecisions = state.decisions.map((decision) => decision.windowId === target.id
-          ? { ...decision, points, outcome: suggestedChoice, label: points === 100 ? 'DOĞRU' : 'YANLIŞ' } : decision);
+          ? { ...decision, points: result.points, outcome: result.outcome, label: result.label, eventMinute: event.minute, eventType: event.type } : decision);
         nextWindows = windows.map((item) => item.id === target.id ? { ...item, resolved: true, resolvedByEventId: event.id } : item);
       }
     }
@@ -90,10 +90,10 @@ export default function AdminPage() {
     if (!target || !linked) return;
     const event = currentEvents.find((item) => item.id === target.resolvedByEventId) ?? currentEvents[currentEvents.length - 1];
     if (!event) return;
-    const outcome = choiceForEvent(event.type) ?? target.correctChoice;
-    const points = linked.choice === outcome ? 100 : 35;
+    const result = resolveDecision(linked, event, target.correctChoice);
     const nextWindows = windows.map((item) => item.id === windowId ? { ...item, resolved: true, resolvedByEventId: event.id } : item);
-    const nextDecisions = state.decisions.map((decision) => decision.windowId === windowId ? { ...decision, outcome, points, label: points === 100 ? 'DOĞRU' : 'YANLIŞ' } : decision);
+    const nextDecisions = state.decisions.map((decision) => decision.windowId === windowId
+      ? { ...decision, outcome: result.outcome, points: result.points, label: result.label, eventMinute: event.minute, eventType: event.type } : decision);
     const nextState = { ...state, windows: nextWindows, decisions: nextDecisions };
     setState(nextState);
     writeLiveState(matchId, nextState);
@@ -128,7 +128,7 @@ export default function AdminPage() {
       </div>
       <div className="panel">
         <div className="panel-title"><span>KARAR PENCERELERİ</span><span>{pending.length} AÇIK</span></div>
-        {windows.map((item) => { const linked = state.decisions.find((d) => d.windowId === item.id); const result = linked && item.resolved ? evaluateDecision(linked.choice, item) : null; return <div className="decision-window" key={item.id}>
+        {windows.map((item) => { const linked = state.decisions.find((d) => d.windowId === item.id); const result = linked && item.resolved && linked.outcome ? { label: linked.label, points: linked.points } : null; return <div className="decision-window" key={item.id}>
           <div className="window-head"><b>{item.minute}&apos;</b><span>{item.resolved ? 'SONUÇLANDI' : linked ? 'KARAR KİLİTLİ' : 'BEKLİYOR'}</span></div>
           <p>{item.question}</p>
           <div className="mini-choices">{item.choices.map((choice: DecisionChoice) => <span key={choice} className={linked?.choice === choice ? 'mini-choice active' : 'mini-choice'}>{decisionLabels[choice]}</span>)}</div>
