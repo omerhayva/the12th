@@ -28,6 +28,14 @@ const EVENT_WEIGHT: Record<string, number> = {
   END: 0.5,
 };
 
+function timingScore(delta: number) {
+  if (delta <= 2) return 100;
+  if (delta <= 5) return 90;
+  if (delta <= 10) return 75;
+  if (delta <= 20) return 60;
+  return 45;
+}
+
 export function scoreDecision(choice: DecisionChoice, actual: DecisionChoice, context: ScoringContext = {}) {
   const correct = choice === actual;
   const eventWeight = context.eventType ? (EVENT_WEIGHT[context.eventType] ?? 1) : 1;
@@ -40,9 +48,10 @@ export function scoreDecision(choice: DecisionChoice, actual: DecisionChoice, co
     return Math.max(0, Math.min(35, penalty));
   }
 
-  const timingBonus = Math.min(10, delta * 1.5);
+  const timing = timingScore(delta);
+  const timingBonus = Math.round((timing - 75) * 0.2);
   const eventBonus = Math.max(-4, Math.min(4, (eventWeight - 1) * 8));
-  return Math.max(0, Math.min(100, Math.round(90 + timingBonus + eventBonus)));
+  return Math.max(0, Math.min(100, Math.round(85 + timingBonus + eventBonus)));
 }
 
 export function calculateIQ(decisions: Decision[]) {
@@ -67,7 +76,7 @@ export function calculateBreakdown(decisions: Decision[]) {
 
   const timed = resolved.filter((d) => typeof d.eventMinute === 'number');
   const timing = timed.length
-    ? Math.round(timed.reduce((sum, d) => sum + Math.max(0, 100 - Math.min(60, Math.abs((d.eventMinute ?? d.minute) - d.minute) * 4)), 0) / timed.length)
+    ? Math.round(timed.reduce((sum, d) => sum + timingScore(Math.abs((d.eventMinute ?? d.minute) - d.minute)), 0) / timed.length)
     : 0;
 
   const mean = resolved.reduce((s, d) => s + d.points, 0) / resolved.length;
