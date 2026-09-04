@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { use, useMemo } from 'react';
 
-export default function ShareScorePage({ params }: { params: { score: string } }) {
-  const score = useMemo(() => Math.max(0, Math.min(100, Number(params.score) || 0)), [params.score]);
+export default function ShareScorePage({ params }: { params: Promise<{ score: string }> }) {
+  const { score: scoreParam } = use(params);
+  const score = useMemo(() => Math.max(0, Math.min(100, Number(scoreParam) || 0)), [scoreParam]);
 
   return (
     <main className="page">
