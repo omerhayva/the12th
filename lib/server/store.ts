@@ -1,5 +1,7 @@
-import type { Decision } from '@/lib/scoring';
+import type { Decision, DecisionChoice } from '@/lib/scoring';
 import type { ApiPlayer } from '@/lib/api/types';
+import type { DecisionWindow, MatchEvent, MatchEventType } from '@/lib/match-engine';
+import type { FootballMatch } from '@/lib/football/provider';
 
 export type StoredDecision = Omit<Decision, 'outcome' | 'points'> & {
   playerId: string;
@@ -31,6 +33,22 @@ export type DecisionResolution = {
   eventType: Decision['eventType'];
 };
 
+export type MatchState = {
+  match: FootballMatch;
+  events: MatchEvent[];
+  windows: DecisionWindow[];
+};
+
+export type MatchEventInput = {
+  id: string;
+  matchId: string;
+  minute: number;
+  type: MatchEventType;
+  team?: 'HOME' | 'AWAY';
+  title: string;
+  description?: string;
+};
+
 export type The12thStore = {
   getPlayer(playerId: string): Promise<ApiPlayer | null>;
   upsertPlayer(player: ApiPlayer): Promise<ApiPlayer>;
@@ -39,6 +57,11 @@ export type The12thStore = {
   getMatchDecisions(matchId: string): Promise<StoredDecision[]>;
   resolveDecision(decisionId: string, resolution: DecisionResolution): Promise<StoredDecision>;
   getPlayersWithDecisions(): Promise<PlayerWithDecisions[]>;
+  getMatchState(matchId: string): Promise<MatchState | null>;
+  upsertMatch(match: FootballMatch): Promise<FootballMatch>;
+  createMatchEvent(input: MatchEventInput): Promise<MatchEvent>;
+  upsertDecisionWindow(matchId: string, window: DecisionWindow): Promise<DecisionWindow>;
+  updateMatchMeta(matchId: string, patch: Partial<Pick<FootballMatch, 'homeScore' | 'awayScore' | 'minute' | 'status'>>): Promise<FootballMatch>;
 };
 
 function configuredForSupabase() {
