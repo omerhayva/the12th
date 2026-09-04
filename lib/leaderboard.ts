@@ -1,4 +1,4 @@
-import { calculateBreakdown, calculateIQ, type Decision } from '@/lib/scoring';
+import { calculateBreakdown, calculateIQ, type Decision, type DecisionChoice } from '@/lib/scoring';
 
 export type LeaderboardEntry = {
   id: string;
@@ -10,10 +10,15 @@ export type LeaderboardEntry = {
   rank?: number;
 };
 
+type LeaderboardDecision = Omit<Decision, 'outcome' | 'points'> & {
+  outcome?: DecisionChoice;
+  points?: number;
+};
+
 export const MIN_RANKED_DECISIONS = 5;
 
-export function summarizePlayer(id: string, name: string, decisions: Decision[]): LeaderboardEntry {
-  const scored = decisions.filter((d) => typeof d.points === 'number' && d.outcome);
+export function summarizePlayer(id: string, name: string, decisions: LeaderboardDecision[]): LeaderboardEntry {
+  const scored = decisions.filter((d): d is Decision => typeof d.points === 'number' && d.outcome !== undefined);
   const breakdown = calculateBreakdown(scored);
   return {
     id,
@@ -31,6 +36,6 @@ export function rankLeaderboard(entries: LeaderboardEntry[]) {
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 
-export function buildLeaderboard(players: Array<{ id: string; name: string; decisions: Decision[] }>) {
+export function buildLeaderboard(players: Array<{ id: string; name: string; decisions: LeaderboardDecision[] }>) {
   return rankLeaderboard(players.map((player) => summarizePlayer(player.id, player.name, player.decisions)));
 }
