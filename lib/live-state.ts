@@ -1,6 +1,6 @@
 import type { DecisionChoice } from './scoring';
 import type { DecisionWindow, MatchEvent, MatchEventType } from './match-engine';
-import { demoEvents, demoWindows } from './demo-data';
+import { demoEvents, demoWindows, matches } from './demo-data';
 
 export type LiveDecision = {
   windowId: string;
@@ -13,7 +13,15 @@ export type LiveDecision = {
   outcome?: DecisionChoice;
 };
 
+export type LiveMatchMeta = {
+  minute: number;
+  homeScore: number;
+  awayScore: number;
+  status: 'LIVE' | 'HT' | 'FT';
+};
+
 export type LiveMatchState = {
+  meta: LiveMatchMeta;
   events: MatchEvent[];
   windows: DecisionWindow[];
   decisions: LiveDecision[];
@@ -24,7 +32,13 @@ export const LIVE_STATE_PREFIX = 'the12th:live:';
 export function getLiveStateKey(matchId: string) { return `${LIVE_STATE_PREFIX}${matchId}`; }
 
 export function getInitialLiveState(matchId: string): LiveMatchState {
-  return { events: demoEvents[matchId] ?? [], windows: demoWindows[matchId] ?? [], decisions: [] };
+  const match = matches.find((item) => item.id === matchId) ?? matches[0];
+  return {
+    meta: { minute: match.minute, homeScore: match.homeScore, awayScore: match.awayScore, status: match.status as LiveMatchMeta['status'] },
+    events: demoEvents[matchId] ?? [],
+    windows: demoWindows[matchId] ?? [],
+    decisions: [],
+  };
 }
 
 export function readLiveState(matchId: string): LiveMatchState {
@@ -33,7 +47,13 @@ export function readLiveState(matchId: string): LiveMatchState {
     const raw = window.localStorage.getItem(getLiveStateKey(matchId));
     if (!raw) return getInitialLiveState(matchId);
     const parsed = JSON.parse(raw) as Partial<LiveMatchState>;
-    return { events: parsed.events ?? [], windows: parsed.windows ?? [], decisions: parsed.decisions ?? [] };
+    const initial = getInitialLiveState(matchId);
+    return {
+      meta: parsed.meta ?? initial.meta,
+      events: parsed.events ?? initial.events,
+      windows: parsed.windows ?? initial.windows,
+      decisions: parsed.decisions ?? initial.decisions,
+    };
   } catch { return getInitialLiveState(matchId); }
 }
 
