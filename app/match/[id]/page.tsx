@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { matches } from '@/lib/demo-data';
-import { decisionLabels, evaluateDecision } from '@/lib/match-engine';
+import { decisionLabels } from '@/lib/match-engine';
 import type { DecisionChoice } from '@/lib/scoring';
-import { getInitialLiveState, readLiveState, writeLiveState, type LiveMatchState } from '@/lib/live-state';
+import { getInitialLiveState, readLiveState, resolveDecision, writeLiveState, type LiveMatchState } from '@/lib/live-state';
 
 const choices: DecisionChoice[] = ['PRESS', 'DROP', 'CHANGE'];
 
@@ -40,8 +40,11 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   const activeWindow = state.windows.find((item) => !item.resolved) ?? state.windows[state.windows.length - 1];
   const lockedDecision = activeWindow ? state.decisions.find((decision) => decision.windowId === activeWindow.id) : undefined;
   const activeChoice = selected ?? lockedDecision?.choice ?? null;
-  const resolved = Boolean(activeWindow?.resolved && lockedDecision);
-  const result = resolved && activeWindow && lockedDecision ? evaluateDecision(lockedDecision.choice, activeWindow) : null;
+  const linkedEvent = activeWindow?.resolvedByEventId ? state.events.find((event) => event.id === activeWindow.resolvedByEventId) : undefined;
+  const resolved = Boolean(activeWindow?.resolved && lockedDecision && linkedEvent);
+  const result = resolved && activeWindow && lockedDecision && linkedEvent
+    ? resolveDecision(lockedDecision, linkedEvent, activeWindow.correctChoice)
+    : null;
 
   const submitDecision = () => {
     if (!selected || locked || !activeWindow || activeWindow.resolved) return;
