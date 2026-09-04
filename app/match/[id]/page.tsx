@@ -7,6 +7,8 @@ import { decisionLabels } from '@/lib/match-engine';
 import type { DecisionChoice } from '@/lib/scoring';
 import { getInitialLiveState, readLiveState, resolveDecision, writeLiveState, type LiveMatchState } from '@/lib/live-state';
 import { getPlayer } from '@/lib/player';
+import { isBrowserSupabaseConfigured } from '@/lib/supabase/browser';
+import { subscribeToMatchRealtime } from '@/lib/supabase/realtime';
 
 const choices: DecisionChoice[] = ['PRESS', 'DROP', 'CHANGE'];
 
@@ -37,9 +39,16 @@ export default function MatchPage({ params }: { params: { id: string } }) {
       const existing = active ? current.decisions.find((d) => d.windowId === active.id) : undefined;
       if (existing) { setSelected(existing.choice); setLocked(true); }
     };
-    const timer = window.setInterval(refresh, 800);
+
     window.addEventListener('the12th:live-update', refresh);
-    return () => { window.clearInterval(timer); window.removeEventListener('the12th:live-update', refresh); };
+    const fallbackTimer = window.setInterval(refresh, isBrowserSupabaseConfigured() ? 10000 : 800);
+    const unsubscribe = subscribeToMatchRealtime(match.id, refresh);
+
+    return () => {
+      window.clearInterval(fallbackTimer);
+      window.removeEventListener('the12th:live-update', refresh);
+      unsubscribe();
+    };
   }, [match.id]);
 
   const activeWindow = state.windows.find((item) => !item.resolved) ?? state.windows[state.windows.length - 1];
