@@ -14,33 +14,19 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!authorized(request)) return NextResponse.json({ error: 'ADMIN_UNAUTHORIZED' }, { status: 401 });
   const { id } = await context.params;
   const body = await request.json().catch(() => null) as {
-    action?: 'event' | 'meta' | 'window';
-    minute?: number;
-    type?: MatchEventType;
-    team?: 'HOME' | 'AWAY';
-    title?: string;
-    description?: string;
-    homeScore?: number;
-    awayScore?: number;
-    status?: 'LIVE' | 'HT' | 'FT';
-    windowId?: string;
-    question?: string;
-    choices?: string[];
-    correctChoice?: string;
-    resolved?: boolean;
-    resolvedByEventId?: string;
+    action?: 'event' | 'meta' | 'window'; id?: string; minute?: number; type?: MatchEventType; team?: 'HOME' | 'AWAY'; title?: string; description?: string;
+    homeScore?: number; awayScore?: number; status?: 'LIVE' | 'HT' | 'FT'; windowId?: string; question?: string; choices?: string[]; correctChoice?: string; resolved?: boolean; resolvedByEventId?: string;
   } | null;
   if (!body?.action) return NextResponse.json({ error: 'INVALID_ADMIN_ACTION' }, { status: 400 });
-
   const store = await getStore();
-  const demo = matches.find((item) => item.id === id);
   const existing = await store.getMatchState(id);
+  const demo = matches.find((item) => item.id === id);
   if (!existing && demo) await store.upsertMatch(demo);
   if (!existing && !demo) return NextResponse.json({ error: 'MATCH_NOT_FOUND' }, { status: 404 });
 
   if (body.action === 'event') {
     if (!body.type || typeof body.minute !== 'number' || !body.title) return NextResponse.json({ error: 'INVALID_EVENT' }, { status: 400 });
-    const event = await store.createMatchEvent({ id: `live-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, matchId: id, minute: body.minute, type: body.type, team: body.team, title: body.title, description: body.description });
+    const event = await store.createMatchEvent({ id: body.id ?? `live-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, matchId: id, minute: body.minute, type: body.type, team: body.team, title: body.title, description: body.description });
     return NextResponse.json({ ok: true, source: storeMode(), event });
   }
 
@@ -55,6 +41,5 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const window = await store.upsertDecisionWindow(id, { id: body.windowId, minute: body.minute, question: body.question, choices: body.choices as never, correctChoice: body.correctChoice as never, resolved: Boolean(body.resolved), resolvedByEventId: body.resolvedByEventId });
     return NextResponse.json({ ok: true, source: storeMode(), window });
   }
-
   return NextResponse.json({ error: 'UNKNOWN_ADMIN_ACTION' }, { status: 400 });
 }
