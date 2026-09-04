@@ -1,8 +1,10 @@
 import type { DecisionChoice } from './scoring';
+import { scoreDecision } from './scoring';
 import type { DecisionWindow, MatchEvent, MatchEventType } from './match-engine';
 import { demoEvents, demoWindows, matches } from './demo-data';
 
 export type LiveDecision = {
+  id?: string;
   windowId: string;
   matchId?: string;
   minute: number;
@@ -11,6 +13,8 @@ export type LiveDecision = {
   points?: number;
   label?: 'DOĞRU' | 'YANLIŞ' | 'BEKLEMEDE';
   outcome?: DecisionChoice;
+  eventMinute?: number;
+  eventType?: MatchEventType;
 };
 
 export type LiveMatchMeta = {
@@ -66,6 +70,16 @@ export function writeLiveState(matchId: string, state: LiveMatchState) {
 export function resetLiveState(matchId: string) {
   if (typeof window === 'undefined') return;
   writeLiveState(matchId, getInitialLiveState(matchId));
+}
+
+export function resolveDecision(decision: LiveDecision, event: MatchEvent, fallbackOutcome: DecisionChoice) {
+  const outcome = choiceForEvent(event.type) ?? fallbackOutcome;
+  const points = scoreDecision(decision.choice, outcome, {
+    decisionMinute: decision.minute,
+    eventMinute: event.minute,
+    eventType: event.type,
+  });
+  return { outcome, points, label: decision.choice === outcome ? 'DOĞRU' as const : 'YANLIŞ' as const };
 }
 
 export function choiceForEvent(type: MatchEventType): DecisionChoice | null {
