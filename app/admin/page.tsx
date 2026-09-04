@@ -27,7 +27,7 @@ export default function AdminPage() {
   const windows = state.windows.length ? state.windows : demoWindows[matchId] ?? [];
   const currentEvents = state.events;
   const pending = useMemo(() => windows.filter((w) => !w.resolved), [windows]);
-  const authHeaders = adminKey ? { 'x-the12th-admin-key': adminKey } : {};
+  const authHeaders: Record<string, string> = adminKey ? { 'x-the12th-admin-key': adminKey } : {};
 
   async function persistAdmin(body: Record<string, unknown>) {
     try {
