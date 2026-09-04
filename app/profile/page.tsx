@@ -1,10 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { demoDecisions } from '@/lib/demo-data';
+import { useEffect, useState } from 'react';
+import { demoDecisions, matches } from '@/lib/demo-data';
 import { calculateBreakdown, calculateIQ, type Decision } from '@/lib/scoring';
-import { matches } from '@/lib/demo-data';
 import { readLiveState } from '@/lib/live-state';
 
 export default function ProfilePage() {
@@ -12,15 +11,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const load = () => {
-      const live = matches.flatMap((match) => readLiveState(match.id).decisions);
-      const liveDecisions: Decision[] = live.filter((d) => typeof d.points === 'number').map((d) => ({
-        id: `${d.windowId}-${d.lockedAt}`,
-        windowId: d.windowId,
-        minute: Math.round((d.lockedAt % 3600000) / 60000),
-        choice: d.choice,
-        outcome: d.choice,
-        points: d.points ?? 0,
-      }));
+      const liveDecisions: Decision[] = matches.flatMap((match) => readLiveState(match.id).decisions)
+        .filter((d) => typeof d.points === 'number' && d.outcome)
+        .map((d) => ({ id: `${d.windowId}-${d.lockedAt}`, windowId: d.windowId, matchId: d.matchId, minute: d.minute, choice: d.choice, outcome: d.outcome!, points: d.points! }));
       setDecisions(liveDecisions.length ? liveDecisions : demoDecisions);
     };
     load();
