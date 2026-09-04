@@ -45,7 +45,6 @@ export async function POST(request: Request) {
   try {
     const result = scoreLiveDecision({
       id: decision.id,
-      playerId: decision.playerId,
       matchId: decision.matchId,
       windowId: decision.windowId,
       minute: decision.minute,
