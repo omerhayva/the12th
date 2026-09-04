@@ -39,10 +39,24 @@ export async function POST(request: Request) {
   const decisions = await store.getMatchDecisions(body.matchId);
   const decision = decisions.find((item) => item.id === body.decisionId);
   if (!decision) return NextResponse.json({ error: 'DECISION_NOT_FOUND' }, { status: 404 });
+  if (!decision.windowId) return NextResponse.json({ error: 'DECISION_WINDOW_MISSING' }, { status: 422 });
   if (typeof decision.points === 'number') return NextResponse.json({ error: 'DECISION_ALREADY_RESOLVED' }, { status: 409 });
 
   try {
-    const result = scoreLiveDecision({ ...decision, lockedAt: Date.parse(decision.lockedAt) }, event, fallback);
+    const result = scoreLiveDecision({
+      id: decision.id,
+      playerId: decision.playerId,
+      matchId: decision.matchId,
+      windowId: decision.windowId,
+      minute: decision.minute,
+      choice: decision.choice,
+      lockedAt: Date.parse(decision.lockedAt),
+      points: decision.points,
+      label: decision.points === undefined ? 'BEKLEMEDE' : undefined,
+      outcome: decision.outcome,
+      eventMinute: decision.eventMinute,
+      eventType: decision.eventType,
+    }, event, fallback);
     const updated = await store.resolveDecision(decision.id, {
       outcome: result.outcome,
       points: result.points,
